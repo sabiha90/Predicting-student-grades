@@ -1,0 +1,90 @@
+---
+title: "ML_on_Student_data"
+output: html_document
+---
+
+```{r}
+
+student_data <- read.csv("/Users/sabihabarlaskar/Desktop/MSCS/Machine learning/Project RF/data/SETAP_data/SETAP PROCESS DATA CORRECT AS FIE2016/setapProcessT1.csv",skip = 3,header = F)
+
+headers = read.csv("/Users/sabihabarlaskar/Desktop/MSCS/Machine learning/Project RF/data/SETAP_data/SETAP PROCESS DATA CORRECT AS FIE2016/setapProcessT1.csv", skip = 1, header = F, nrows = 1, as.is = T)
+headers
+colnames(student_data)= headers
+
+dim(student_data)
+student_data[85]
+table(student_data$teamMemberCount)
+names(student_data)
+```
+
+#Removing spaces between column names
+```{r}
+student_data$teamMemberResponseCount
+print(cor(student_data$teamMemberCount,student_data$teamMemberResponseCount))
+student_data<-transform(student_data,Student_grade_label=1)
+student_data$Student_grade_label <- NULL
+names(student_data)
+anyNA(student_data)
+
+```
+
+
+
+Data Visualization
+```{r}
+library(ggplot2)
+ggplot(student_data, aes(meetingHoursTotal,codingDeliverablesHoursTotal)) + geom_point(aes(colour=factor(student_data$SE.Process.grade)))
+
+ggplot(student_data, aes(teamLeadGender)) + geom_histogram()
+
+ggplot(student_data, aes(femaleTeamMembersPercent)) + geom_histogram(binwidth=0.08)
+
+```
+
+Measuring correlation between data points
+```{r}
+print(cor(student_data$meetingHoursTotal,student_data$helpHoursTotal))
+print(cor(student_data$teamLeadGender,student_data$femaleTeamMembersPercent))
+
+```
+
+
+Separating data into training and testing sets using caret
+```{r}
+
+library(caret)
+index <- createDataPartition(student_data$SE.Process.grade, p=0.75, list=FALSE, times=1)
+st.training <- student_data[index,]
+st.test <- student_data[-index,]
+dim(st.test)
+dim(st.training)
+```
+
+Classifying using KNN of caret
+```{r}
+trctrl <- trainControl(method = "repeatedcv", number = 10, repeats = 3)
+trctrl
+set.seed(3333)
+knn_fit <- train(SE.Process.grade ~., data = student_data, method = "knn",
+trControl=trctrl, preProcess = c("center", "scale"), tuneLength = 10)
+knn_fit
+```
+
+Prediction
+```{r}
+test_pred <- predict(knn_fit, newdata = st.test)
+test_pred
+```
+
+Evaluating the model
+```{r}
+merge <- data.frame(st.test[85], test_pred)
+names(merge) <- c('Actual', 'Predicted')
+merge
+```
+
+
+Confusion matrix
+```{r}
+confusionMatrix(test_pred, st.test$SE.Process.grade )
+```
